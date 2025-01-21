@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Converter</title>
+  <style>
+    .flash-container {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      max-width: 300px;
+      text-align: center; /* Optional for centering text */
+    }
+    
+    .alert {
+      background-color: #fb9e08;
+      color: #1bfd02;
+      border: 1px solid #ea670f;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+      font-family: Arial, sans-serif;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .alert-success {
+      color: #0088ff;
+      background-color: #01fd3b;
+      border-color: #f2ff00;
+    }
+    
+    .alert-danger {
+      color: #00ff00;
+      background-color: #ff0000;
+      border-color: #00d5ff;
+    }		
+    </style>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="flash-container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    
+      {% for category, message in messages %}
+      <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    
+    {% endif %}
+  {% endwith %}
+</div>
+
+  <!-- Header Section -->
+<header class="bg-custom text-white text-center py-4" style="background-color: #FF4B2B;">
+  <h1>Text Image To Audio Converter</h1>
+  <p>Convert your files to the audio format you need!</p>
+</header>
+
+
+  <!-- Main Content Section -->
+  <main class="container my-5">
+    <div class="row g-4">
+      <!-- Left Section -->
+      <aside class="col-lg-3">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h3 class="card-title">Background Music & Voice</h3>
+            <label class="form-label"><b>Choose Background Music:</b></label>
+            <ul class="list-group mb-3">
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Music 1 <button class="btn btn-success btn-sm"  style="background-color: #FF4B2B;" onclick="alert('Playing Music 1')">Play</button>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Music 2 <button class="btn btn-success btn-sm"  style="background-color: #FF4B2B;" onclick="alert('Playing Music 2')">Play</button>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Music 3 <button class="btn btn-success btn-sm"  style="background-color: #FF4B2B;" onclick="alert('Playing Music 3')">Play</button>
+              </li>
+            </ul>
+            <label class="form-label"><b>Choose Voice Gender:</b></label>
+            <select class="form-select">
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Converter Section -->
+      <section class="col-lg-6">
+        <div class="card shadow-sm">
+          <div class="card-body text-center">
+            <h4 class="card-title">Image To Audio Converter</h4>
+            <div class="mb-4">
+              <label class="d-block border border-success rounded p-3 text-secondary cursor-pointer">
+                <input type="file" class="d-none" id="fileUpload">
+                Drop files here or click to upload
+              </label>
+            </div>
+            <div class="d-flex justify-content-center gap-3 mb-4">
+              <div>
+                <label class="form-label"><b>Convert</b></label>
+                <select class="form-select">
+                  <option value="image">Image</option>
+                  <option value="others">Others</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label"><b>To</b></label>
+                <select class="form-select">
+                  <option value="mp3">MP3</option>
+                  <option value="text">Text</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-success w-50"  style="background-color: #FF4B2B;">Start Converting</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Section -->
+      <aside class="col-lg-3">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h3 class="card-title">Optional Settings</h3>
+            <form>
+              <div class="form-check">
+                <input type="radio" class="form-check-input" name="bitrate" id="defaultBitrate" checked>
+                <label class="form-check-label" for="defaultBitrate"><b>No bitrate change (Default)</b></label>
+              </div>
+              <div class="form-check my-2">
+                <input type="radio" class="form-check-input" name="bitrate" id="variableBitrate">
+                <label class="form-check-label" for="variableBitrate"><b>Change variable bitrate:</b></label>
+              </div>
+              <select class="form-select mb-2">
+                <option>45...85 kbps</option>
+                <option>70...105 kbps</option>
+                <option>120...150 kbps</option>
+              </select>
+              <div class="form-check my-2">
+                <input type="radio" class="form-check-input" name="bitrate" id="constantBitrate">
+                <label class="form-check-label" for="constantBitrate"><b>Change constant bitrate:</b></label>
+              </div>
+              <select class="form-select mb-2">
+                <option>128 kbps</option>
+                <option>160 kbps</option>
+                <option>192 kbps</option>
+              </select>
+              <label class="form-label"><b>Change audio frequency:</b></label>
+              <select class="form-select mb-2">
+                <option value="no-change">No change</option>
+                <option value="44100">44,100 Hz</option>
+              </select>
+              <label class="form-label"><b>Change audio channels:</b></label>
+              <select class="form-select">
+                <option value="mono">Mono</option>
+                <option value="stereo">Stereo</option>
+              </select>
+            </form>
+          </div>
+        </div>
+      </aside>
+      </div>
+      <!-- Instructions Section -->
+      <div class="col-lg-12">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h2 class="card-title text-center">How to Convert an Image to an Audio File?</h2>
+            <div class="row">
+              <div class="col-md-6">
+                <h3>Default Instructions</h3>
+                <ol>
+                  <li>Choose the IMAGE file you want to convert.</li>
+                  <li>Select the desired output format (MP3 or WAV).</li>
+                  <li>Click on "Start Conversion" to begin the process.</li>
+                  <li>Download your AUDIO file once the conversion is complete.</li>
+                </ol>
+              </div>
+              <div class="col-md-6">
+                <h3>Optional Instructions</h3>
+                <ol>
+                  <li>Adjust the audio quality (Low, Medium, High) for the output.</li>
+                  <li>Add background music to the converted audio.</li>
+                  <li>Select male or female voice for text-to-speech files.</li>
+                  <li>Preview the audio before downloading to ensure satisfaction.</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      
+    </div>
+  </main>
+
+  <!-- Footer Section -->
+  <footer class="bg-custom text-white text-center py-3" style="background-color: #fd2802;" >
+    <p>Made by ImageToAudioConversion. © 2025 All Rights Reserved.</p>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+      // Hide flash messages after 10 seconds
+      setTimeout(() => {
+          document.querySelectorAll('.alert').forEach(message => {
+              message.style.display = 'none';
+          });
+      }, 5000);
+  </script>
+
+</body>
+</html>
