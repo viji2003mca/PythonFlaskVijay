@@ -130,6 +130,7 @@
     font-weight: bold;
     background: linear-gradient(to right, #1fbaf8, #a3f106); /* Gradient background */
     -webkit-background-clip: text; /* Clips the background to the text */
+    background-clip: text;
     -webkit-text-fill-color: transparent; /* Makes the text color transparent so the gradient shows */
     color: transparent; /* Ensures the text itself is transparent */
   }
@@ -183,7 +184,7 @@
 
   <div class="column-left" style="width: 350px;">
     <form action="/convert_image_to_audio" method="POST" enctype="multipart/form-data">
-      <div class="card shadow-sm">
+      <div class="card shadow-sm" style="width: 550px;">
           <div class="card-body">
               <h4 class="card-title">Image To Audio Converter</h4>
               <div class="mb-4">

@@ -192,6 +192,7 @@ def convert_image_to_audio():
             current_app.logger.debug(f'Audio file saved at: {audio_filepath}')
 
             flash('File successfully converted to audio.', 'success')
+
             return send_from_directory(DOWNLOAD_FOLDER, audio_filename, as_attachment=True)
         
         except Exception as e:
