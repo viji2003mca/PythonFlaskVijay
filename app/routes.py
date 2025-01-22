@@ -52,19 +52,6 @@ def captcha_image():
     return send_file(image_buffer, mimetype='image/png')
 
 
-UPLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'uploads')
-DOWNLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'downloads')
-
-# Create upload and download folders if they do not exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
-
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
 @main.route('/')
 def home():
     return render_template('home.html')
@@ -143,6 +130,22 @@ def index():
 
     # Default behavior for GET requests
     return render_template('index.html')
+
+
+
+#Home Page Concept
+
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'uploads')
+DOWNLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'downloads')
+
+# Create upload and download folders if they do not exist
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 # Configure Tesseract OCR path
