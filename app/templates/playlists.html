@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Music Player</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    .header {
+      background: #333;
+      color: whitesmoke;
+      padding: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .user-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 50px;
+      right: 20px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      z-index: 10;
+    }
+    .dropdown-menu ul {
+      list-style: none;
+      padding: 10px;
+      margin: 0;
+    }
+    .dropdown-menu ul li {
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .dropdown-menu ul li:hover {
+      background: #f0f0f0;
+    }
+    .player-container {
+      display: none;
+      height: calc(100vh - 60px);
+      display: flex;
+    }
+    .now-playing-container {
+      display: flex;
+      align-items: center;
+      gap: 1px;
+    }
+    .audio-icon {
+      font-size: 1.5em; /* Adjust icon size */
+    }
+    .playlist {
+      width: 25%;
+      background: #f8f9fa;
+      border-right: 1px solid #ccc;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    .playlist ul {
+      list-style: none;
+      padding: 0;
+    }
+    .playlist ul li {
+      padding: 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #ddd;
+    }
+    .playlist ul li:hover {
+      background: #efefef;
+    }
+    .music-player {
+      width: 75%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .audio-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<header style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: linear-gradient(to right, #FF4B2B, #FF416C); border: 5px solid #FF4B2B; border-radius: 15px; box-sizing: border-box;">
+  <!-- Left Section: Logo/Image -->
+  <div style="flex: 0 0 20%; display: flex; justify-content: center;">
+    <img src="{{ url_for('static', filename='images/1.jpeg') }}" alt="Logo" style="max-width: 30%; height: 30%; border-radius: 10px;">
+  </div>
+
+  <!-- Center Section: Title and Subtitle -->
+  <div style="flex: 0 0 60%; text-align: center; color: white;">
+    <h1 style="margin: 0; font-size: 2.5rem;">Text Image To Audio Converter</h1>
+    <p style="font-size: 1.2rem; margin: 0;">Convert your files to the audio format you need!</p>
+  </div>
+
+  <!-- Right Section: Button -->
+  <div class="header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; color: whitesmoke;">
+    <!-- Left Section: Username -->
+    <h2 style="margin: 0; padding-right: 10px;">{{ name }}   </h2>
+
+    <!-- Right Section: User Icon -->
+    <div style="position: relative;">
+      <img src="{{ url_for('static', filename='images/user.png') }}" alt="User Icon" class="user-icon" id="userIcon" 
+           style="width: 60px; height: 60px; border-radius: 50%; cursor: pointer;">
+      <div class="dropdown-menu" id="dropdownMenu" 
+           style="display: none; position: absolute; top: 50px; right: 0; background: white; border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); z-index: 10;">
+        <ul style="list-style: none; margin: 0; padding: 10px;">
+          <li style="padding: 8px; cursor: pointer;" onclick="openPlaylists()">Playlists</li>
+          <li style="padding: 8px; cursor: pointer;" onclick="logout()">Logout</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="player-container" id="playerContainer">
+  <!-- Playlist Section -->
+  <div class="playlist" id="playlist">
+    <h3>Available Playlists</h3>
+    <ul>
+      <!-- Example Playlist Items -->
+      <li onclick="playAudio('../static/downloads/images.mp3')">Song 1</li>
+      <li onclick="playAudio('/static/downloads/Screenshot_14.mp3')">Song 2</li>
+      <li onclick="playAudio('/static/downloads/Screenshot_20.mp3')">Song 3</li>
+      
+      <li onclick="playAudio('/static/downloads/Screenshot_21.mp3')">Song 4</li>
+      <li onclick="playAudio('/static/downloads/Screenshot_2025-01-04_133436.mp3')">Song 5</li>
+    </ul>
+  </div>
+
+  <!-- Music Player Section -->
+  <div class="music-player">
+    <div style="flex: 0 0 20%; display: flex; justify-content: center;">
+      <img src="{{ url_for('static', filename='images/imag2.jpeg') }}" alt="Logo" style="max-width: 100%; height: 100%; border-radius: 10px;">
+    </div>
+    <div class="now-playing-container">
+      <span class="audio-icon" id="audioIcon" style="display: none;">🔊</span>
+      <h3 id="nowPlaying">Now Playing: None</h3>
+    </div>
+    <audio controls id="audioPlayer" style="width: 80%;">
+      <source id="audioSource" src="" type="audio/mpeg">
+      Your browser does not support the audio element.
+    </audio>
+  </div>
+</div>
+<script>
+  const userIcon = document.getElementById("userIcon");
+  const dropdownMenu = document.getElementById("dropdownMenu");
+  const playerContainer = document.getElementById("playerContainer");
+  const audioPlayer = document.getElementById("audioPlayer");
+  const audioIcon = document.getElementById("audioIcon");
+  const nowPlaying = document.getElementById("nowPlaying");
+
+  // Toggle the dropdown menu visibility
+  userIcon.addEventListener("click", () => {
+    dropdownMenu.style.display = dropdownMenu.style.display === "block" ? "none" : "block";
+  });
+
+  // Show the player container and playlist
+  function openPlaylists() {
+    dropdownMenu.style.display = "none";
+    playerContainer.style.display = "flex";
+  }
+
+  // Play the selected audio
+  function playAudio(audioPath) {
+    // Set the audio source and reload
+    audioPlayer.src = audioPath;
+    audioPlayer.load();
+
+    // Start playing the audio
+    audioPlayer.play();
+
+    // Extract and display the song name
+    const songName = audioPath.split("/").pop();
+    nowPlaying.textContent = `Now Playing: ${songName}`;
+  }
+
+  // Handle logout functionality
+  function logout() {
+    fetch("/logout", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then((response) => {
+        if (response.redirected) {
+          window.location.href = response.url;
+        } else {
+          alert("Logout failed. Please try again.");
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        alert("An error occurred during logout.");
+      });
+  }
+
+  // Show the audio icon when playing
+  audioPlayer.addEventListener("play", () => {
+    audioIcon.style.display = "inline";
+  });
+
+  // Hide the audio icon when paused or playback ends
+  audioPlayer.addEventListener("pause", () => {
+    audioIcon.style.display = "none";
+  });
+
+  audioPlayer.addEventListener("ended", () => {
+    audioIcon.style.display = "none";
+  });
+</script>
+
+
+</body>
+</html>
