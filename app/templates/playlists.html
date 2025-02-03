@@ -110,34 +110,15 @@
   <div class="header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; color: whitesmoke;">
     <!-- Left Section: Username -->
     <h2 style="margin: 0; padding-right: 10px;">{{ name }}   </h2>
-
-    <!-- Right Section: User Icon -->
-    <div style="position: relative;">
-      <img src="{{ url_for('static', filename='images/user.png') }}" alt="User Icon" class="user-icon" id="userIcon" 
-           style="width: 60px; height: 60px; border-radius: 50%; cursor: pointer;">
-      <div class="dropdown-menu" id="dropdownMenu" 
-           style="display: none; position: absolute; top: 50px; right: 0; background: white; border: 1px solid #ccc; border-radius: 5px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); z-index: 10;">
-        <ul style="list-style: none; margin: 0; padding: 10px;">
-          <li style="padding: 8px; cursor: pointer;" onclick="openPlaylists()">Playlists</li>
-          <li style="padding: 8px; cursor: pointer;" onclick="logout()">Logout</li>
-        </ul>
-      </div>
-    </div>
   </div>
 </header>
 
 <div class="player-container" id="playerContainer">
-  <!-- Playlist Section -->
   <div class="playlist" id="playlist">
     <h3>Available Playlists</h3>
-    <ul>
+    <ul id="audioList">
       <!-- Example Playlist Items -->
-      <li onclick="playAudio('../static/downloads/images.mp3')">Song 1</li>
-      <li onclick="playAudio('/static/downloads/Screenshot_14.mp3')">Song 2</li>
-      <li onclick="playAudio('/static/downloads/Screenshot_20.mp3')">Song 3</li>
       
-      <li onclick="playAudio('/static/downloads/Screenshot_21.mp3')">Song 4</li>
-      <li onclick="playAudio('/static/downloads/Screenshot_2025-01-04_133436.mp3')">Song 5</li>
     </ul>
   </div>
 
@@ -157,58 +138,59 @@
   </div>
 </div>
 <script>
-  const userIcon = document.getElementById("userIcon");
-  const dropdownMenu = document.getElementById("dropdownMenu");
   const playerContainer = document.getElementById("playerContainer");
-  const audioPlayer = document.getElementById("audioPlayer");
   const audioIcon = document.getElementById("audioIcon");
-  const nowPlaying = document.getElementById("nowPlaying");
+  
 
-  // Toggle the dropdown menu visibility
-  userIcon.addEventListener("click", () => {
-    dropdownMenu.style.display = dropdownMenu.style.display === "block" ? "none" : "block";
-  });
 
   // Show the player container and playlist
   function openPlaylists() {
     dropdownMenu.style.display = "none";
     playerContainer.style.display = "flex";
   }
+  document.addEventListener("DOMContentLoaded", function () {
+      fetchAudioFiles();
+  });
 
-  // Play the selected audio
+  function fetchAudioFiles() {
+      const userEmail = "{{ email }}";  // Email passed from Flask
+
+      fetch(`/get_audio_files?email=${encodeURIComponent(userEmail)}`)
+          .then(response => response.json())
+          .then(files => {
+              const audioList = document.getElementById("audioList");
+              audioList.innerHTML = "";  // Clear existing list
+
+              if (files.length === 0) {
+                  audioList.innerHTML = "<li>No audio files found.</li>";
+                  return;
+              }
+
+              files.forEach(file => {
+                  const listItem = document.createElement("li");
+                  listItem.textContent = file;
+                  listItem.onclick = () => playAudio(`/static/downloads/${file}`);
+                  audioList.appendChild(listItem);
+              });
+
+              console.log("Fetched files:", files);  // Debugging log
+          })
+          .catch(error => console.error("Error fetching audio files:", error));
+  }
+
   function playAudio(audioPath) {
-    // Set the audio source and reload
-    audioPlayer.src = audioPath;
-    audioPlayer.load();
+      const audioPlayer = document.getElementById("audioPlayer");
+      const nowPlaying = document.getElementById("nowPlaying");
 
-    // Start playing the audio
-    audioPlayer.play();
+      audioPlayer.src = audioPath;
+      audioPlayer.load();
+      audioPlayer.play();
 
-    // Extract and display the song name
-    const songName = audioPath.split("/").pop();
-    nowPlaying.textContent = `Now Playing: ${songName}`;
+      const songName = audioPath.split("/").pop();
+      nowPlaying.textContent = `Now Playing: ${songName}`;
   }
 
-  // Handle logout functionality
-  function logout() {
-    fetch("/logout", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then((response) => {
-        if (response.redirected) {
-          window.location.href = response.url;
-        } else {
-          alert("Logout failed. Please try again.");
-        }
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-        alert("An error occurred during logout.");
-      });
-  }
+  
 
   // Show the audio icon when playing
   audioPlayer.addEventListener("play", () => {
@@ -223,6 +205,8 @@
   audioPlayer.addEventListener("ended", () => {
     audioIcon.style.display = "none";
   });
+
+
 </script>
 
 

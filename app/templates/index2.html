@@ -57,31 +57,46 @@
       cursor: pointer;
     }
 
-    /* Side Menu Bar */
+    /* Side Menu */
     .side-menu {
       position: fixed;
       top: 0;
-      right: -300px; /* Hidden by default */
-      width: 300px;
+      right: -320px; /* Initially hidden */
+      width: 320px;
       height: 100%;
-      background: #fbfbf9;
-      color: #f8f8f9;
-      box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
-      transition: right 0.3s ease;
+      background: #222;
+      color: white;
+      box-shadow: -4px 0 10px rgba(0, 0, 0, 0.3);
+      transition: right 0.4s ease-in-out;
       z-index: 1000;
       padding: 20px;
+      border-radius: 10px 0 0 10px;
     }
 
+    /* Show Menu */
     .side-menu.active {
-      right: 0; /* Show the menu */
+      right: 0;
     }
 
+    /* Close Button */
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      
+      font-size: 40px;
+      cursor: pointer;
+      color: rgb(4, 243, 32);
+    }
+
+    /* User Info */
     .side-menu-header {
       display: flex;
       align-items: center;
       margin-bottom: 20px;
-      background: #d4753a;
-      color: whitesmoke;
+      background: linear-gradient(135deg, #ff6a00, #ee0979);
+      padding: 15px;
+      border-radius: 8px;
+      color: white;
     }
 
     .user-icon {
@@ -89,8 +104,10 @@
       height: 60px;
       border-radius: 50%;
       margin-right: 10px;
+      border: 3px solid white;
     }
 
+    /* Menu Items */
     .side-menu ul {
       list-style: none;
       padding: 0;
@@ -98,25 +115,41 @@
     }
 
     .side-menu ul li {
-      padding: 10px;
-      border-bottom: 4px solid #e73e6e;
-      cursor: pointer;
-      color: #333;
+      text-align: center;
+      margin: 10px 0;
     }
 
-    .side-menu ul li:hover {
-      background: #f85903;
-      color: #d8fd04;
+    .menu-btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: bold;
+      color: white;
+      background: linear-gradient(90deg, #ff5f6d, #ffc371);
+      cursor: pointer;
+      transition: 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
-    .close-btn {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      font-size: 30px;
-      cursor: pointer;
-      color: #f70404;
+    .menu-btn:hover {
+      background: linear-gradient(90deg, #ff9966, #ff5e62);
+      transform: scale(1.05);
     }
+
+    /* Logout Button */
+    .logout-btn {
+      background: linear-gradient(90deg, #3dfe02, #08c83b);
+    }
+
+    .logout-btn:hover {
+      background: linear-gradient(90deg, #04c1ec, #e9dd06);
+    }
+
 
 
 
@@ -151,34 +184,52 @@
   </div>
 
   <!-- Side Menu -->
-  <div class="side-menu" id="sideMenu">
-    <span class="close-btn" id="closeBtn">&times;</span>
-    <div class="side-menu-header">
-      <img src="{{ url_for('static', filename='images/user.png') }}" alt="User Icon" class="user-icon">
-      <div>
-        <h4>{{ name }}</h4>
-        <p>{{ email }}</p>
-      </div>
+<div class="side-menu" id="sideMenu">
+  <span class="close-btn" id="closeBtn">&times;</span>
+
+  <div class="side-menu-header">
+    <img src="{{ url_for('static', filename='images/user.png') }}" alt="User Icon" class="user-icon">
+    <div>
+      <h4 id="userName">{{ name }}</h4>
+      <p id="userEmail">{{ email }}</p>
     </div>
-    <ul>
-      <li onclick="openPlaylists()" aria-selected="true">Image To Audio</li>
-      <li onclick="viewProfile()">Image To Text</li>
-      <li onclick="viewProfile()">PDF To Audio</li>
-      <li onclick="settings()">Audio to Text</li>
-    </hr>
-      <br/>
-      <br/>
-      <br/>
-    </hr>
-      <li onclick="help()">Play Lists</li>
-    </hr>
-      <br/>
-      <br/>
-      <br/>
-    </hr>
-      <li onclick="logout()">Logout</li>
-    </ul>
   </div>
+
+  <ul>
+    <li>
+      <button class="menu-btn" onclick="navigateTo('/image-to-audio')">
+        🎵 Image To Audio
+      </button>
+    </li>
+    <li>
+      <button class="menu-btn" onclick="navigateTo('/image-to-text')">
+        📝 Image To Text
+      </button>
+    </li>
+    <li>
+      <button class="menu-btn" onclick="navigateTo('/pdf-to-audio')">
+        📄 PDF To Audio
+      </button>
+    </li>
+    <li>
+      <button class="menu-btn" onclick="navigateTo('/audio-to-text')">
+        🔊 Audio To Text
+      </button>
+    </li>
+    <br>
+    <li>
+      <button class="menu-btn" onclick="navigateTo('/playlists')">
+        🎶 Playlists
+      </button>
+    </li>
+    <br><br><br>
+    <li>
+      <button class="menu-btn logout-btn" onclick="navigateTo('/logout')">
+        🚪 Logout
+      </button>
+    </li>
+  </ul>
+</div>
 </header>
 
 <div class="flash-container">
@@ -201,7 +252,7 @@
           <!-- Left Section -->
           <aside class="col-lg-3" style="border:5px solid #FF4B2B;">
             <div class="card shadow-sm">
-              <div class="card-body" style="height:520px;">
+              <div class="card-body" style="height:620px;">
                 <h3 class="card-title">Background Music & Voice</h3>
                 <label class="form-label"><b>Choose Background Music:</b></label>
                 <div>
@@ -226,10 +277,13 @@
                     Your browser does not support the audio element.
                   </audio>
                 </div>
-                <label class="form-label"><b>Choose Voice Gender:</b></label>
+                <label class="form-label"><b>Choose Voice Accent:</b></label>
                 <select class="form-select" name="voiceGender">
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
+                  <option value="male">Indian-Voice</option>
+                  <option value="mal">UK-Voice</option>
+                  <option value="ma">Canadian-Voice</option>
+                  <option value="m">Australian</option>
+                  <option value="female">US-Voice</option>
                 </select>
 
                 <label class="form-label"><b>Adjust Pitch:</b></label>
@@ -251,6 +305,15 @@
                   <option value="1.5">1.5 (Fast)</option>
                   <option value="2">2 (Very Fast)</option>
                 </select>
+
+                <label class="form-label"><b>Adjust Background Volume:</b></label>
+                <select class="form-select mb-3" id="volumeControl" name="volume">
+                  <option value="0">0% (Muted)</option>
+                  <option value="25">25%</option>
+                  <option value="50">50% (Default)</option>
+                  <option value="75">75%</option>
+                  <option value="100" selected>100% (Maximum)</option>
+                </select>
               </div>
             </div>
           </aside>
@@ -258,7 +321,7 @@
           <!-- Converter Section -->
           <section class="col-lg-6" style="border:5px solid #FF4B2B;">
             <div class="card shadow-sm">
-              <div class="card-body text-center" style="height:520px;">
+              <div class="card-body text-center" style="height:620px;">
                 <h3 class="card-title">Image To Audio Converter</h3></br>
                 <div class="d-flex justify-content-center gap-3 mb-4">
                   <div style="display: flex; align-items: center; gap: 10px;">
@@ -307,6 +370,14 @@
                     </select>
                   </div>
                 </div>
+
+                <input type="hidden" name="name" value="{{ name }}">
+                <input type="hidden" name="email" value="{{ email }}">
+                <div class="text-center mt-4">
+                  <button type="submit" class="btn btn-success w-50" style="background: linear-gradient(to right, #f3d300, #A8E063); height:50px;">Submit And Convert</button>
+                </div>
+
+
               </div>
             </div>
           </section>
@@ -315,57 +386,54 @@
           <aside class="col-lg-3" style="border:5px solid #FF4B2B;">
             <div class="card shadow-sm">
               <div class="card-body">
-                <h3 class="card-title">Optional Settings</h3>
-                <div class="form-check">
-                  <input type="radio" class="form-check-input" name="bitrate" id="defaultBitrate" value="default" checked>
-                  <label class="form-check-label" for="defaultBitrate"><b>No bitrate change (Default)</b></label>
+                <h3 class="mt-4">Steps For Converting Audio</h3>
+                <div class="d-flex flex-wrap gap-3 mt-3">
+                  <!-- Box 1 -->
+                  <div class="card flex-fill shadow-sm border-0" style="background: linear-gradient(to right, #FF5733, #FFC300); color: white; border-radius: 10px;">
+                    <div class="card-body text-center">
+                      <h5 class="card-title">Step 1: Upload Your Image</h5>
+                      
+                    </div>
+                  </div>
+
+                  <!-- Box 2 -->
+                  <div class="card flex-fill shadow-sm border-0" style="background: linear-gradient(to right, #FF5733, #FFC300); color: white; border-radius: 10px;">
+                    <div class="card-body text-center">
+                      <h5 class="card-title">Step 2: Choose Language</h5>
+                      
+                    </div>
+                  </div>
+                  <!-- Box 3 -->
+                  <div class="card flex-fill shadow-sm border-0" style="background: linear-gradient(to right, #FF5733, #FFC300); color: white; border-radius: 10px;">
+                    <div class="card-body text-center">
+                      <h5 class="card-title">Step 3: Choose MP3 or Txt File For Converting</h5>
+                      
+                    </div>
+                  </div>
+
+                  <!-- Box 4 -->
+                  <div class="card flex-fill shadow-sm border-0" style="background: linear-gradient(to right, #FF5733, #FFC300); color: white; border-radius: 10px;">
+                    <div class="card-body text-center">
+                      <h5 class="card-title">Step 4: Customize the Audio</h5>
+                      
+                    </div>
+                  </div>
+
+                  <!-- Box 5 -->
+                  <div class="card flex-fill shadow-sm border-0" style="background: linear-gradient(to right, #FF5733, #FFC300); color: white; border-radius: 10px;">
+                    <div class="card-body text-center">
+                      <h5 class="card-title">Step 5: Convert & Download</h5>
+                      
+                    </div>
+                  </div>
+                  
                 </div>
-                <br/>
-                <div class="form-check my-2">
-                  <input type="radio" class="form-check-input" name="bitrate" id="variableBitrate" value="variable">
-                  <label class="form-check-label" for="variableBitrate"><b>Change variable bitrate:</b></label>
-                </div>
-                <select class="form-select mb-2" name="variableBitrateValue">
-                  <option>45...85 kbps</option>
-                  <option>70...105 kbps</option>
-                  <option>120...150 kbps</option>
-                </select>
-                <div class="form-check my-2">
-                  <input type="radio" class="form-check-input" name="bitrate" id="constantBitrate" value="constant">
-                  <label class="form-check-label" for="constantBitrate"><b>Change constant bitrate:</b></label>
-                </div>
-                <select class="form-select mb-2" name="constantBitrateValue">
-                  <option>128 kbps</option>
-                  <option>160 kbps</option>
-                  <option>192 kbps</option>
-                </select>
-                <label class="form-label"><b>Change audio frequency:</b></label>
-                <select class="form-select mb-2" name="audioFrequency">
-                  <option value="no-change">No change</option>
-                  <option value="44100">44,100 Hz</option>
-                </select>
-                <label class="form-label"><b>Change audio channels:</b></label>
-                <select class="form-select" name="audioChannels">
-                  <option value="mono">Mono</option>
-                  <option value="stereo">Stereo</option>
-                </select>
-                <label class="form-label"><b>Adjust Background Volume:</b></label>
-                <select class="form-select mb-3" id="volumeControl" name="volume">
-                  <option value="0">0% (Muted)</option>
-                  <option value="25">25%</option>
-                  <option value="50">50% (Default)</option>
-                  <option value="75">75%</option>
-                  <option value="100" selected>100% (Maximum)</option>
-                </select>
+                
               </div>
             </div>
           </aside>
         </div>
-        <input type="hidden" name="name" value="{{ name }}">
-        <input type="hidden" name="email" value="{{ email }}">
-        <div class="text-center mt-4">
-          <button type="submit" class="btn btn-success w-50" style="background: linear-gradient(to right, #f3d300, #A8E063); height:50px;">Submit All Settings</button>
-        </div>
+        
       </form>
 
 
@@ -473,6 +541,35 @@
     closeBtn.addEventListener('click', () => {
       sideMenu.classList.remove('active');
     });
+
+
+
+    function playSelectedMusic() {
+        var select = document.getElementById("music-select");
+        var audioPlayer = document.getElementById("audio-player");
+        var audioSource = document.getElementById("audio-source");
+        var musicName = document.getElementById("music-name");
+
+        var selectedMusic = select.value;
+
+        if (selectedMusic) {
+            // Set the audio source
+            audioSource.src = "/static/backgroundmusic/" + selectedMusic; // Adjust the path based on your file location
+            audioPlayer.load(); // Reload the audio element with the new source
+            audioPlayer.play(); // Play the selected music
+            musicName.textContent = select.options[select.selectedIndex].text; // Update displayed selected music name
+        }
+    }
+
+    function navigateTo(route) {
+      let name = encodeURIComponent(document.getElementById('userName').innerText);
+      let email = encodeURIComponent(document.getElementById('userEmail').innerText);
+
+      // Redirect with name and email as query parameters
+      window.location.href = `${route}?name=${name}&email=${email}`;
+    }
+
+
   </script>
 
 </body>

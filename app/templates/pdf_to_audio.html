@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF to Audio Converter</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .container {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      gap: 30px;
+    }
+    .column-left, .column-right {
+      flex: 0 0 50%;
+      border: 5px solid #FF4B2B;
+      border-radius: 15px;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .column-left {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      text-align: center;
+    }
+    .column-right {
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .glow-on-hover {
+      width: 220px;
+      height: 50px;
+      border: 10px;
+      outline: none;
+      background: linear-gradient(to right, #65d30c, #FFC300);
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+    header, footer {
+      padding: 1rem;
+      color: white;
+      text-align: center;
+    }
+    header {
+      background: linear-gradient(to right, #FF4B2B, #FF416C);
+    }
+    footer {
+      background: linear-gradient(to right, #FD2802, #FF5733);
+    }
+    header h1 {
+      font-size: 2.5rem;
+      font-weight: bold;
+      background: linear-gradient(to right, #1fbaf8, #a3f106);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      color: transparent;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header Section -->
+<header style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; border: 5px solid #FF4B2B; border-radius: 15px;">
+  <div style="flex: 0 0 20%; display: flex; justify-content: center;">
+    <img src="{{ url_for('static', filename='images/1.jpeg') }}" alt="Logo" style="max-width: 30%; height: 30%; border-radius: 10px;">
+  </div>
+  <div style="flex: 0 0 60%; text-align: center; color: white;">
+    <h1>PDF To Audio Converter</h1>
+    <p>Convert your PDF documents into spoken audio!</p>
+  </div>
+  <div style="flex: 0 0 20%; display: flex; justify-content: center;">
+    <h3>User: {{ name }}</h3>
+  </div>
+</header>
+
+<main class="container my-5">
+  <div class="column-left">
+    <form action="/convert_pdf_to_audio" method="POST" enctype="multipart/form-data">
+      <div class="card shadow-sm" style="width: 550px;">
+          <div class="card-body">
+              <h4 class="card-title">Upload a PDF</h4>
+              <label class="form-label"><b>Choose Language</b></label>
+              <select class="form-select" name="language">
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <option value="de">German</option>
+                <option value="it">Italian</option>
+                <option value="hi">Hindi</option>
+              </select>
+              <br/>
+              <label class="form-label"><b>Choose Voice Accent:</b></label>
+              <select class="form-select" name="voiceGender">
+                <option value="male">Indian-Voice</option>
+                <option value="mal">UK-Voice</option>
+                <option value="ma">Canadian-Voice</option>
+                <option value="m">Australian</option>
+                <option value="female">US-Voice</option>
+              </select>
+              <br/>
+              <label class="form-label"><b>Choose The PDF File:</b></label>
+              <div class="mb-4">
+                  <input type="file" class="form-control" name="file">
+              </div>
+              <button class="btn btn-success w-50" type="submit">
+                  Convert to Audio
+              </button>
+          </div>
+      </div>
+    </form>
+  </div>
+  
+  <div class="column-right">
+    <h2>About This Tool</h2>
+    <p>Convert your PDFs into spoken audio easily.</p>
+    <h3>How It Works</h3>
+    <div class="d-flex flex-wrap gap-3 mt-3">
+        <!-- Box 1 -->
+        <div class="card flex-fill shadow-sm border-0" style="background: linear-gradient(to right, #FF5733, #FFC300); color: white; border-radius: 10px;">
+          <div class="card-body text-center">
+            <h5 class="card-title">Step 1: Upload Your PDF Document</h5>
+            
+          </div>
+        </div>
+        
+        <!-- Box 2 -->
+        <div class="card flex-fill shadow-sm border-0" style="background: linear-gradient(to right, #FF5733, #FFC300); color: white; border-radius: 10px;">
+          <div class="card-body text-center">
+            <h5 class="card-title">Step 2: Choose Language To Convert</h5>
+            
+          </div>
+        </div>
+        <!-- Box 3 -->
+        <div class="card flex-fill shadow-sm border-0" style="background: linear-gradient(to right, #FF5733, #FFC300); color: white; border-radius: 10px;">
+          <div class="card-body text-center">
+            <h5 class="card-title">Step 3: Download Audio File</h5>
+            
+          </div>
+        </div>
+        
+      </div>
+  </div>
+</main>
+
+<footer>
+  <p>Made by PDFToAudioConverter. &copy; 2025 All Rights Reserved.</p>
+</footer>
+
+</body>
+</html>

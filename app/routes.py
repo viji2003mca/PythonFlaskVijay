@@ -1,10 +1,11 @@
 
 from datetime import datetime
 import os
-
 import random
 import string
-from flask import Blueprint, render_template, request, redirect, flash, send_from_directory, session, url_for, send_file
+import PyPDF2
+import speech_recognition as sr
+from flask import Blueprint, render_template, request, redirect, flash, send_from_directory, session, url_for, send_file, jsonify
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 from . import mysql
@@ -214,18 +215,6 @@ def convert_image_to_audio():
         return redirect(url_for('main.home'))
 
 
-@main.route('/logout')
-def logout():
-    session.pop('user_id', None)
-    flash('Logged out successfully.', 'success')
-    return redirect(url_for('main.index'))
-
-
-@main.route('/playlists')
-def playlists():
-    return render_template('playlists.html')
-
-
 @main.route('/index2', methods=['GET', 'POST'])
 def index2():
     if request.method == 'POST':
@@ -265,8 +254,6 @@ def index2():
                 # Process the user's customization choices
                 background_music = request.form.get('backgroundMusic')
                 voice_gender = request.form.get('voiceGender', 'female')  # Default to female if not provided
-                pitch = request.form.get('pitch', 1.0)  # Default pitch value
-                duration = request.form.get('duration', 1.0)  # Duration in seconds (optional)
                 
                 language_mapping = {
                         'eng': 'en',  # English
@@ -301,13 +288,24 @@ def index2():
                         current_app.logger.debug(f'Extracted text: {extracted_text}')
                         
                         # Convert extracted text to audio (MP3)
-                        tts = gTTS(extracted_text, lang=language, slow=False)
+                        if voice_gender == "male":
+                            tts = gTTS(extracted_text, lang=language, slow=False, tld="co.in")
+                        elif voice_gender == "mal":
+                            tts = gTTS(extracted_text, lang=language, slow=False, tld="co.uk")
+                        elif voice_gender == "ma":
+                            tts = gTTS(extracted_text, lang=language, slow=False, tld="ca")
+                        elif voice_gender == "m":
+                            tts = gTTS(extracted_text, lang=language, slow=False, tld="com.au")
+                        else:
+                            tts = gTTS(extracted_text, lang=language, slow=False, tld="com")  # US Female Accent
                         audio_filename = os.path.splitext(filename)[0] + '_voice.mp3'
+                        
                         audio_filepath = os.path.join(DOWNLOAD_FOLDER, audio_filename)
                         tts.save(audio_filepath)
                         current_app.logger.debug(f'Audio file saved at: {audio_filepath}')
+
+
                         email = request.form.get('email')
-                        
 
                         try:
                             cursor = mysql.connection.cursor()
@@ -315,12 +313,12 @@ def index2():
                             # Insert new conversion history into the database
                             cursor.execute(
                                 "INSERT INTO conversion_history (email, file_name, is_favorite, created_at) VALUES (%s, %s, %s, %s)", 
-                                (email, text_filename, False, datetime.utcnow())
+                                (email, audio_filename, False, datetime.utcnow())
                             )
                             mysql.connection.commit()
-                            current_app.logger.debug(f'Conversion history saved for {email} with file {stored_filename}.')
+                            current_app.logger.debug(f'Conversion history saved for {email} with file {audio_filename}.')
 
-                            flash('Conversion details saved successfully!', 'success')
+                            
 
 
                         except Exception as e:
@@ -369,9 +367,7 @@ def index2():
                                     final_audio_filepath = os.path.join(DOWNLOAD_FOLDER, final_audio_filename)
                                     combined.export(final_audio_filepath, format='mp3')
                                     current_app.logger.debug(f'Combined audio file saved at: {final_audio_filepath}')
-                                
 
-                                    # Insert new conversion history into the database
                                     try:
                                         cursor = mysql.connection.cursor()
                                         
@@ -381,9 +377,9 @@ def index2():
                                             (email, final_audio_filename, False, datetime.utcnow())
                                         )
                                         mysql.connection.commit()
-                                        current_app.logger.debug(f'Conversion history saved for {email} with file {stored_filename}.')
+                                        current_app.logger.debug(f'Conversion history saved for {email} with file {final_audio_filename}.')
 
-                                        flash('Conversion details saved successfully!', 'success')
+                                        
 
 
                                     except Exception as e:
@@ -392,7 +388,7 @@ def index2():
                                     
                                     finally:
                                         cursor.close()
-                                   
+
                                     # Send the file as a download
                                     return send_from_directory(DOWNLOAD_FOLDER, final_audio_filename, as_attachment=True)
                                     
@@ -416,6 +412,7 @@ def index2():
                         return redirect(url_for('main.index2'))
                     
                     text_filename = os.path.splitext(filename)[0] + '.txt'
+                    
                     text_filepath = os.path.join(DOWNLOAD_FOLDER, text_filename)
 
                     with open(text_filepath, 'w') as f:
@@ -432,10 +429,9 @@ def index2():
                             (email, text_filename, False, datetime.utcnow())
                         )
                         mysql.connection.commit()
-                        current_app.logger.debug(f'Conversion history saved for {email} with file {stored_filename}.')
+                        current_app.logger.debug(f'Conversion history saved for {email} with file {text_filename}.')
 
-                        flash('Conversion details saved successfully!', 'success')
-
+                        
 
                     except Exception as e:
                         flash(f"Database Error: {e}", 'danger')
@@ -444,12 +440,7 @@ def index2():
                     finally:
                         cursor.close()
 
-
                     return send_from_directory(DOWNLOAD_FOLDER, text_filename, as_attachment=True)
-
-               
-                
-                stored_filename = text_filename if request.form['convertTo'] == 'text' else audio_filename
                 
 
             except Exception as e:
@@ -462,3 +453,322 @@ def index2():
     else:
         
         return redirect(url_for('main.index2'))
+    
+
+@main.route('/image-to-audio')
+def image_to_audio():
+    name = request.args.get('name', 'Guest')
+    email = request.args.get('email', 'No Email')
+    return render_template('index2.html', name=name, email=email)
+
+@main.route('/image-to-text')
+def image_to_text():
+    name = request.args.get('name', 'Guest')
+    email = request.args.get('email', 'No Email')
+    return render_template('image_to_text.html', name=name, email=email)
+
+@main.route('/convert_image_to_text1', methods=['GET', 'POST'])
+def convert_image_to_text1():
+
+    UPLOAD_FOLDERS = os.path.join(os.getcwd(), 'static', 'uploads')
+    DOWNLOAD_FOLDERS = os.path.join(os.getcwd(), 'static', 'downloads')
+
+    # Create upload and download folders if they do not exist
+    os.makedirs(UPLOAD_FOLDERS, exist_ok=True)
+    os.makedirs(DOWNLOAD_FOLDERS, exist_ok=True)
+
+    ALLOWED_EXTENSION = {'png', 'jpg', 'jpeg', 'gif'}
+
+    def allowed_file(filename):
+        return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSION
+
+
+    if 'file' not in request.files:
+        flash('No file part', 'danger')
+        return redirect(url_for('main.image_to_text'))
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        flash('No file selected', 'danger')
+        return redirect(url_for('main.image_to_text'))
+
+    if file and allowed_file(file.filename):
+        try:
+            # Save the uploaded file
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(UPLOAD_FOLDERS, filename)
+            file.save(filepath)
+            current_app.logger.debug(f'Image file saved at: {filepath}')
+
+            # Validate if file is an image
+            try:
+                image = Image.open(filepath)
+            except IOError:
+                flash('Uploaded file is not a valid image.', 'danger')
+                current_app.logger.error(f'Invalid image file: {filepath}')
+                return redirect(url_for('main.image_to_text'))
+            language_mapping = {
+                'eng': 'en',  # English
+                'spa': 'es',  # Spanish
+                'fra': 'fr',  # French
+                'deu': 'de',  # German
+                'ita': 'it',  # Italian
+                'jpn': 'ja',  # Japanese
+                'kor': 'ko',  # Korean
+                'hin': 'hi',  # Hindi
+                'tam': 'ta',  # Tamil
+                'tel': 'te',  # Telugu
+                'rus': 'ru',  # Russian
+                'ara': 'ar',  # Arabic
+            }
+
+                # Get the language from the form (default to 'en' if not provided)
+            form_language = request.form.get('language', 'eng')  # Default to 'eng' if not specified
+
+                # Convert form value to the corresponding gTTS language code
+            language = language_mapping.get(form_language, 'en')  # Default to 'en' if not found in the dictionary
+            # Extract text from the image
+            extracted_text = pytesseract.image_to_string(image, lang=language)
+            current_app.logger.debug(f'Extracted text: {extracted_text}')
+
+            if not extracted_text.strip():
+                flash('No text detected in the image.', 'danger')
+                return redirect(url_for('main.image_to_text'))
+
+            # Save extracted text to a file
+            text_filename = os.path.splitext(filename)[0] + '.txt'
+            text_filepath = os.path.join(DOWNLOAD_FOLDERS, text_filename)
+            with open(text_filepath, 'w', encoding='utf-8') as text_file:
+                text_file.write(extracted_text)
+            current_app.logger.debug(f'Text file saved at: {text_filepath}')
+
+            return send_from_directory(DOWNLOAD_FOLDERS, text_filename, as_attachment=True)
+        
+        except Exception as e:
+            current_app.logger.error(f'Error during conversion: {str(e)}')
+            flash(f'An error occurred: {e}', 'danger')
+            return redirect(url_for('main.image_to_text'))
+    else:
+        flash('Invalid file type. Please upload an image file.', 'danger')
+        return redirect(url_for('main.image_to_text'))
+
+@main.route('/pdf-to-audio')
+def pdf_to_audio():
+    name = request.args.get('name', 'Guest')
+    email = request.args.get('email', 'No Email')
+    return render_template('pdf_to_audio.html', name=name, email=email)
+
+@main.route('/convert_pdf_to_audio', methods=['POST'])
+def convert_pdf_to_audio():
+    UPLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'uploads')
+    DOWNLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'downloads')
+
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+
+    if 'file' not in request.files:
+        flash('No file part', 'danger')
+        return redirect(url_for('main.pdf_to_audio'))
+
+    file = request.files['file']
+
+    if file.filename == '':
+        flash('No file selected', 'danger')
+        return redirect(url_for('main.pdf_to_audio'))
+
+    if file and file.filename.endswith('.pdf'):
+        try:
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(filepath)
+            current_app.logger.debug(f'PDF file saved at: {filepath}')
+
+            # Extract text from PDF
+            text = extract_text_from_pdf(filepath)
+            if not text.strip():
+                flash('No text detected in the PDF.', 'danger')
+                return redirect(url_for('main.pdf_to_audio'))
+
+            # Convert text to audio
+            audio_filename = os.path.splitext(filename)[0] + '.mp3'
+            audio_filepath = os.path.join(DOWNLOAD_FOLDER, audio_filename)
+
+            language = request.form.get('language', 'en')
+            voice_gender = request.form.get('voiceGender', 'female')  # Default to female if not provided
+            
+            # Convert extracted text to audio (MP3)
+            if voice_gender == "male":
+                tts = gTTS(text=text, lang=language, slow=False, tld="co.in")
+            elif voice_gender == "mal":
+                tts = gTTS(text=text, lang=language, slow=False, tld="co.uk")
+            elif voice_gender == "ma":
+                tts = gTTS(text=text, lang=language, slow=False, tld="ca")
+            elif voice_gender == "m":
+                tts = gTTS(text=text, lang=language, slow=False, tld="com.au")
+            else:
+                tts = gTTS(text=text, lang=language, slow=False, tld="com")  # US Female Accent
+            tts.save(audio_filepath)
+            current_app.logger.debug(f'Audio file saved at: {audio_filepath}')
+
+            return send_from_directory(DOWNLOAD_FOLDER, audio_filename, as_attachment=True)
+
+        except Exception as e:
+            current_app.logger.error(f'Error during conversion: {str(e)}')
+            flash(f'An error occurred: {e}', 'danger')
+            return redirect(url_for('main.pdf_to_audio'))
+    else:
+        flash('Invalid file type. Please upload a PDF file.', 'danger')
+        return redirect(url_for('main.pdf_to_audio'))
+
+def extract_text_from_pdf(filepath):
+    text = ""
+    with open(filepath, "rb") as file:
+        reader = PyPDF2.PdfReader(file)
+        for page in reader.pages:
+            text += page.extract_text() + "\n"
+    return text
+
+
+@main.route('/audio-to-text')
+def audio_to_text():
+    name = request.args.get('name', 'Guest')
+    email = request.args.get('email', 'No Email')
+    return render_template('audio_to_text.html', name=name, email=email)
+
+
+@main.route('/audio-to-text1', methods=['GET', 'POST'])
+def audio_to_text1():
+    """Handles audio file upload, transcribes text, and allows downloading."""
+    UPLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'uploads')
+    DOWNLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'downloads')
+
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+
+
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('No file part', 'danger')
+            return redirect(url_for('main.audio_to_text'))
+
+        file = request.files['file']
+
+        if file.filename == '':
+            flash('No file selected', 'danger')
+            return redirect(url_for('main.audio_to_text'))
+
+        if file and file.filename.endswith(('.mp3', '.wav', '.flac', '.m4a')):
+            try:
+                filename = secure_filename(file.filename)
+                filepath = os.path.join(UPLOAD_FOLDER, filename)
+                file.save(filepath)
+                current_app.logger.debug(f'Audio file saved at: {filepath}')
+
+                # Convert non-WAV files to WAV
+                wav_filepath = convert_to_wav(filepath)
+
+                # Convert audio to text
+                text = extract_text_from_audio(wav_filepath)
+                if not text.strip():
+                    flash('No speech detected in the audio file.', 'danger')
+                    return redirect(url_for('main.audio_to_text'))
+
+                # Save transcribed text as a .txt file
+                text_filename = os.path.splitext(filename)[0] + '.txt'
+                text_filepath = os.path.join(DOWNLOAD_FOLDER, text_filename)
+
+                with open(text_filepath, 'w', encoding='utf-8') as txt_file:
+                    txt_file.write(text)
+
+                current_app.logger.debug(f'Text file saved at: {text_filepath}')
+                flash('Audio successfully converted to text.', 'success')
+
+                return send_from_directory(DOWNLOAD_FOLDER, text_filename, as_attachment=True)
+
+            except Exception as e:
+                current_app.logger.error(f'Error during conversion: {str(e)}')
+                flash(f'An error occurred: {e}', 'danger')
+                return redirect(url_for('main.audio_to_text'))
+
+        else:
+            flash('Invalid file type. Please upload an audio file.', 'danger')
+            return redirect(url_for('main.audio_to_text'))
+
+    return render_template('audio_to_text.html')
+
+def convert_to_wav(filepath):
+    """Converts an audio file to WAV format if necessary."""
+    if filepath.endswith('.wav'):
+        return filepath  # Already WAV, no conversion needed
+
+    wav_filepath = os.path.splitext(filepath)[0] + '.wav'
+    audio = AudioSegment.from_file(filepath)
+    audio.export(wav_filepath, format="wav")
+    
+    return wav_filepath
+
+def extract_text_from_audio(filepath):
+    """Extracts text from an audio file using SpeechRecognition."""
+    recognizer = sr.Recognizer()
+    with sr.AudioFile(filepath) as source:
+        audio_data = recognizer.record(source)
+        try:
+            text = recognizer.recognize_google(audio_data)
+            return text
+        except sr.UnknownValueError:
+            return "Could not understand the audio."
+        except sr.RequestError:
+            return "Error connecting to speech recognition service."
+
+
+def get_user_audio_files(email):
+    try:
+        cursor = mysql.connection.cursor()
+
+        # Query the database for filenames where the email matches
+        query = "SELECT file_name FROM conversion_history WHERE email = %s"
+        cursor.execute(query, (email,))
+        files = cursor.fetchall()  # Returns a list of tuples
+        
+        cursor.close()
+        
+        # Debugging: Print fetched data to check if it works
+        print("Fetched Files:", files)  
+
+        return [file[0] for file in files]  # Extract filenames from tuples
+    except Exception as e:
+        print("Database error:", e)
+        return []
+
+
+@main.route('/playlists')
+def playlists():
+    name = request.args.get('name', 'Guest')
+    email = request.args.get('email', 'No Email')
+    # Fetch audio files for the given email
+    audio_files = get_user_audio_files(email)
+
+    return render_template('playlists.html', name=name, email=email, audio_files=audio_files)
+
+@main.route('/get_audio_files', methods=['GET'])
+def get_audio_files():
+    email = request.args.get('email')
+    
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+    
+    files = get_user_audio_files(email)
+    
+    # Debugging: Print to check response
+    print("Returning files:", files)
+    
+    return jsonify(files)
+
+    
+
+@main.route('/logout')
+def logout():
+    session.clear()
+    flash('Logged out successfully.', 'success')
+    return redirect(url_for('main.index'))
