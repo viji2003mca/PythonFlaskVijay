@@ -67,6 +67,105 @@
     -webkit-text-fill-color: transparent; /* Makes the text color transparent so the gradient shows */
     color: transparent; /* Ensures the text itself is transparent */
     }
+
+    .menu-icon {
+      width: 60px;
+      height: 60px;
+      cursor: pointer;
+    }
+
+    /* Side Menu */
+    .side-menu {
+      position: fixed;
+      top: 0;
+      right: -320px; /* Initially hidden */
+      width: 320px;
+      height: 100%;
+      background: #222;
+      color: white;
+      box-shadow: -4px 0 10px rgba(0, 0, 0, 0.3);
+      transition: right 0.4s ease-in-out;
+      z-index: 1000;
+      padding: 20px;
+      border-radius: 10px 0 0 10px;
+    }
+
+    /* Show Menu */
+    .side-menu.active {
+      right: 0;
+    }
+
+    /* Close Button */
+    .close-btn {
+      position: absolute;
+      top: 10px;
+      left: 20px;
+      font-size: 40px;
+      cursor: pointer;
+      color: rgb(4, 243, 32);
+    }
+
+    /* User Info */
+    .side-menu-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #ff6a00, #ee0979);
+      padding: 15px;
+      border-radius: 8px;
+      color: white;
+    }
+
+    .user-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      margin-right: 10px;
+      border: 3px solid white;
+    }
+
+    /* Menu Items */
+    .side-menu ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .side-menu ul li {
+      text-align: center;
+      margin: 10px 0;
+    }
+
+    .menu-btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: bold;
+      color: white;
+      background: linear-gradient(90deg, #ff5f6d, #ffc371);
+      cursor: pointer;
+      transition: 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .menu-btn:hover {
+      background: linear-gradient(90deg, #ff9966, #ff5e62);
+      transform: scale(1.05);
+    }
+
+    /* Logout Button */
+    .logout-btn {
+      background: linear-gradient(90deg, #3dfe02, #08c83b);
+    }
+
+    .logout-btn:hover {
+      background: linear-gradient(90deg, #04c1ec, #e9dd06);
+    }
   </style>
 </head>
 <body>
@@ -84,9 +183,57 @@
   </div>
 
   <!-- Right Section: Button -->
-  <div style="flex: 0 0 20%; display: flex; justify-content: center;">
-    <h3>User: {{name}}</h3>
+  <div class="header" style="display: flex; justify-content: space-between; align-items: center; padding: 10px; color: whitesmoke;">
+    <img src="{{ url_for('static', filename='images/menu3.png') }}" alt="Menu Icon" class="menu-icon" id="menuIcon">
   </div>
+
+  <!-- Side Menu -->
+<div class="side-menu" id="sideMenu">
+  <span class="close-btn" id="closeBtn">&times;</span>
+
+  <div class="side-menu-header">
+    <img src="{{ url_for('static', filename='images/user.png') }}" alt="User Icon" class="user-icon">
+    <div>
+      <h4 id="userName">{{ name }}</h4>
+      <p id="userEmail">{{ email }}</p>
+    </div>
+  </div>
+
+  <ul>
+    <li>
+      <button class="menu-btn" onclick="navigateTo('/image-to-audio')">
+        🎵 Image To Audio
+      </button>
+    </li>
+    <li>
+      <button class="menu-btn" onclick="navigateTo('/image-to-text')">
+        📝 Image To Text
+      </button>
+    </li>
+    <li>
+      <button class="menu-btn" onclick="navigateTo('/pdf-to-audio')">
+        📄 PDF To Audio
+      </button>
+    </li>
+    <li>
+      <button class="menu-btn" onclick="navigateTo('/audio-to-text')">
+        🔊 Audio To Text
+      </button>
+    </li>
+    <br>
+    <li>
+      <button class="menu-btn" onclick="navigateTo('/playlists')">
+        🎶 Playlists
+      </button>
+    </li>
+    <br><br><br>
+    <li>
+      <button class="menu-btn logout-btn" onclick="navigateTo('/logout')">
+        🚪 Logout
+      </button>
+    </li>
+  </ul>
+</div>
 </header>
 <main class="container my-5">
   <div class="column-left">
@@ -121,6 +268,8 @@
                   </label>
                   <div id="fileName" class="mt-2 text-secondary"></div>
               </div>
+              <input type="hidden" name="name" value="{{ name }}">
+              <input type="hidden" name="email" value="{{ email }}">
               <button class="btn btn-success w-50" type="submit" style="background: linear-gradient(to right, #f19e22, #A8E063);">
                   Convert to Text
               </button>
@@ -173,6 +322,30 @@
       fileNameDisplay.textContent = `Selected file: ${file.name}`;
     }
   }
+
+  
+  const menuIcon = document.getElementById('menuIcon');
+  const sideMenu = document.getElementById('sideMenu');
+  const closeBtn = document.getElementById('closeBtn');
+
+  // Open Side Menu
+  menuIcon.addEventListener('click', () => {
+    sideMenu.classList.add('active');
+  });
+
+  // Close Side Menu
+  closeBtn.addEventListener('click', () => {
+    sideMenu.classList.remove('active');
+  });
+
+  function navigateTo(route) {
+    let name = encodeURIComponent(document.getElementById('userName').innerText);
+    let email = encodeURIComponent(document.getElementById('userEmail').innerText);
+
+    // Redirect with name and email as query parameters
+    window.location.href = `${route}?name=${name}&email=${email}`;
+  }
+
 </script>
 </body>
 </html>

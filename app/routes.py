@@ -1,14 +1,17 @@
 
 from datetime import datetime
+from functools import wraps
 import os
 import random
 import string
 import PyPDF2
+from flask_mail import Message
+import pyminizip
 import speech_recognition as sr
 from flask import Blueprint, render_template, request, redirect, flash, send_from_directory, session, url_for, send_file, jsonify
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
-from . import mysql
+from . import mysql, mail
 import bcrypt
 from werkzeug.utils import secure_filename
 from gtts import gTTS
@@ -56,11 +59,35 @@ def captcha_image():
     return send_file(image_buffer, mimetype='image/png')
 
 
+@main.after_request
+def add_no_cache_headers(response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash("Please log in first.", "warning")
+            return redirect(url_for('main.index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@main.before_request
+def require_login():
+    allowed_routes = ['main.home', 'main.index', 'main.captcha_image']  # Pages accessible without login
+    if 'user_id' not in session and request.endpoint not in allowed_routes:
+        flash("You need to log in first.", "danger")
+        return redirect(url_for('main.index'))
+
 @main.route('/')
 def home():
     return render_template('home.html')
 
 @main.route('/index', methods=['GET', 'POST'])
+
 def index():
     if request.method == 'POST':
         form_action = request.form.get('form_action')
@@ -213,11 +240,33 @@ def convert_image_to_audio():
     else:
         flash('Invalid file type. Please upload an image file.', 'danger')
         return redirect(url_for('main.home'))
-
+    
+    
+def send_password_email(user_email, zip_password):
+    try:
+        msg = Message(
+            "Your ZIP File Password",
+            recipients=[user_email]
+        )
+        msg.body = f"Hello,\n\nYour password for the downloaded ZIP file is: {zip_password}\n\nBest Regards,\nYour Service Team"
+        
+        mail.send(msg)  # Send the email
+        current_app.logger.debug(f'Password email sent to {user_email}')
+    
+    except Exception as e:
+        current_app.logger.error(f'Error sending email: {e}')
+        flash('Failed to send password email. Please check your email settings.', 'danger')
 
 @main.route('/index2', methods=['GET', 'POST'])
+@login_required
 def index2():
     if request.method == 'POST':
+
+        email = request.form.get('email')
+        password = f"{random.randint(1000, 9999)}"  # Set your password here
+        if email:
+            send_password_email(email, password)
+
         # Check if a file was uploaded
         if 'uploadedFile' not in request.files:
             flash('No file part', 'danger')
@@ -279,6 +328,7 @@ def index2():
                 
                 # MySQL Database logic for storing conversion history
                 email = request.form.get('email')
+                
 
                 if request.form['convertTo'] == 'mp3':
                     try:
@@ -287,6 +337,7 @@ def index2():
                         extracted_text = pytesseract.image_to_string(image, lang=language)
                         current_app.logger.debug(f'Extracted text: {extracted_text}')
                         
+                            
                         # Convert extracted text to audio (MP3)
                         if voice_gender == "male":
                             tts = gTTS(extracted_text, lang=language, slow=False, tld="co.in")
@@ -299,10 +350,10 @@ def index2():
                         else:
                             tts = gTTS(extracted_text, lang=language, slow=False, tld="com")  # US Female Accent
                         audio_filename = os.path.splitext(filename)[0] + '_voice.mp3'
-                        
                         audio_filepath = os.path.join(DOWNLOAD_FOLDER, audio_filename)
                         tts.save(audio_filepath)
                         current_app.logger.debug(f'Audio file saved at: {audio_filepath}')
+                        
 
 
                         email = request.form.get('email')
@@ -389,60 +440,54 @@ def index2():
                                     finally:
                                         cursor.close()
 
-                                    # Send the file as a download
-                                    return send_from_directory(DOWNLOAD_FOLDER, final_audio_filename, as_attachment=True)
+                                    # **Create Password-Protected ZIP File (Password: 1234)**
+                                    zip_filename = os.path.splitext(filename)[0] + '.zip'
+                                    zip_filepath = os.path.join(DOWNLOAD_FOLDER, zip_filename)
+                                    
+                                    
+
+                                    try:
+                                        # pyminizip.compress(input_file, None, output_zip, password, compression_level)
+                                        pyminizip.compress(final_audio_filepath, None, zip_filepath, password, 5)  # Compression level 5 (1-9)
+                                        # if email:
+                                        #     send_password_email(email, password)
+                                        current_app.logger.debug(f'ZIP file saved at: {zip_filepath}')
+                                        return send_from_directory(DOWNLOAD_FOLDER, zip_filename, as_attachment=True)
+
+                                    except Exception as e:
+                                        current_app.logger.error(f'Error creating ZIP file: {e}')
+                                        flash('Failed to create password-protected ZIP file.', 'danger')
+                                        return redirect(url_for('main.image_to_text'))
                                     
                             else:
                                 flash('Background music file not found.', 'danger')
                                 return redirect(url_for('main.index2'))
                         else:
                             # If no background music, return the original MP3 file
-                            return send_from_directory(DOWNLOAD_FOLDER, audio_filename, as_attachment=True)
+                            # **Create Password-Protected ZIP File (Password: 1234)**
+                            zip_filename = os.path.splitext(filename)[0] + '.zip'
+                            zip_filepath = os.path.join(DOWNLOAD_FOLDER, zip_filename)
+                            
+                            
+
+                            try:
+                                # pyminizip.compress(input_file, None, output_zip, password, compression_level)
+                                pyminizip.compress(audio_filepath, None, zip_filepath, password, 5)  # Compression level 5 (1-9)
+                                # if email:
+                                #     send_password_email(email, password)
+                                current_app.logger.debug(f'ZIP file saved at: {zip_filepath}')
+                                return send_from_directory(DOWNLOAD_FOLDER, zip_filename, as_attachment=True)
+
+                            except Exception as e:
+                                current_app.logger.error(f'Error creating ZIP file: {e}')
+                                flash('Failed to create password-protected ZIP file.', 'danger')
+                                return redirect(url_for('main.image_to_text'))
 
                     except Exception as e:
                         current_app.logger.error(f"Error processing MP3 conversion: {e}")
                         flash("An error occurred while processing your request.", "danger")
                         return redirect(url_for('main.index2'))
-
-
-                elif request.form['convertTo'] == 'text':
-                    # Save extracted text as a txt file
-                    if not extracted_text.strip():
-                        flash('No text detected in the image to convert to text.', 'danger')
-                        return redirect(url_for('main.index2'))
-                    
-                    text_filename = os.path.splitext(filename)[0] + '.txt'
-                    
-                    text_filepath = os.path.join(DOWNLOAD_FOLDER, text_filename)
-
-                    with open(text_filepath, 'w') as f:
-                        f.write(extracted_text)
-                    
-                    current_app.logger.debug(f'Text file saved at: {text_filepath}')
-                    
-                    try:
-                        cursor = mysql.connection.cursor()
-                        
-                        # Insert new conversion history into the database
-                        cursor.execute(
-                            "INSERT INTO conversion_history (email, file_name, is_favorite, created_at) VALUES (%s, %s, %s, %s)", 
-                            (email, text_filename, False, datetime.utcnow())
-                        )
-                        mysql.connection.commit()
-                        current_app.logger.debug(f'Conversion history saved for {email} with file {text_filename}.')
-
-                        
-
-                    except Exception as e:
-                        flash(f"Database Error: {e}", 'danger')
-                        current_app.logger.error(f"Error while saving conversion history: {str(e)}")
-                    
-                    finally:
-                        cursor.close()
-
-                    return send_from_directory(DOWNLOAD_FOLDER, text_filename, as_attachment=True)
                 
-
             except Exception as e:
                 current_app.logger.error(f'Error during conversion: {str(e)}')
                 flash(f'An error occurred: {e}', 'danger')
@@ -467,8 +512,15 @@ def image_to_text():
     email = request.args.get('email', 'No Email')
     return render_template('image_to_text.html', name=name, email=email)
 
+    
+
+
 @main.route('/convert_image_to_text1', methods=['GET', 'POST'])
 def convert_image_to_text1():
+    email = request.form.get('email')
+    password = f"{random.randint(1000, 9999)}"  # Set your password here
+    if email:
+        send_password_email(email, password)
 
     UPLOAD_FOLDERS = os.path.join(os.getcwd(), 'static', 'uploads')
     DOWNLOAD_FOLDERS = os.path.join(os.getcwd(), 'static', 'downloads')
@@ -481,7 +533,6 @@ def convert_image_to_text1():
 
     def allowed_file(filename):
         return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSION
-
 
     if 'file' not in request.files:
         flash('No file part', 'danger')
@@ -508,29 +559,20 @@ def convert_image_to_text1():
                 flash('Uploaded file is not a valid image.', 'danger')
                 current_app.logger.error(f'Invalid image file: {filepath}')
                 return redirect(url_for('main.image_to_text'))
+
             language_mapping = {
-                'eng': 'en',  # English
-                'spa': 'es',  # Spanish
-                'fra': 'fr',  # French
-                'deu': 'de',  # German
-                'ita': 'it',  # Italian
-                'jpn': 'ja',  # Japanese
-                'kor': 'ko',  # Korean
-                'hin': 'hi',  # Hindi
-                'tam': 'ta',  # Tamil
-                'tel': 'te',  # Telugu
-                'rus': 'ru',  # Russian
-                'ara': 'ar',  # Arabic
+                'eng': 'en', 'spa': 'es', 'fra': 'fr', 'deu': 'de', 
+                'ita': 'it', 'jpn': 'ja', 'kor': 'ko', 'hin': 'hi', 
+                'tam': 'ta', 'tel': 'te', 'rus': 'ru', 'ara': 'ar'
             }
 
-                # Get the language from the form (default to 'en' if not provided)
             form_language = request.form.get('language', 'eng')  # Default to 'eng' if not specified
+            language = language_mapping.get(form_language, 'en')  # Convert form value
 
-                # Convert form value to the corresponding gTTS language code
-            language = language_mapping.get(form_language, 'en')  # Default to 'en' if not found in the dictionary
             # Extract text from the image
             extracted_text = pytesseract.image_to_string(image, lang=language)
             current_app.logger.debug(f'Extracted text: {extracted_text}')
+            
 
             if not extracted_text.strip():
                 flash('No text detected in the image.', 'danger')
@@ -543,8 +585,46 @@ def convert_image_to_text1():
                 text_file.write(extracted_text)
             current_app.logger.debug(f'Text file saved at: {text_filepath}')
 
-            return send_from_directory(DOWNLOAD_FOLDERS, text_filename, as_attachment=True)
-        
+            try:
+                cursor = mysql.connection.cursor()
+                
+                # Insert new conversion history into the database
+                cursor.execute(
+                    "INSERT INTO conversion (email, file_name, module, created_at) VALUES (%s, %s, %s, %s)", 
+                    (email, text_filename, "IMGTOTEXT", datetime.utcnow())
+                )
+                mysql.connection.commit()
+                current_app.logger.debug(f'Conversion history saved for {email} with file {text_filename}.')
+
+                
+
+
+            except Exception as e:
+                flash(f"Database Error: {e}", 'danger')
+                current_app.logger.error(f"Error while saving conversion history: {str(e)}")
+            
+            finally:
+                cursor.close()
+
+            # **Create Password-Protected ZIP File (Password: 1234)**
+            zip_filename = os.path.splitext(filename)[0] + '.zip'
+            zip_filepath = os.path.join(DOWNLOAD_FOLDERS, zip_filename)
+            
+            
+
+            try:
+                # pyminizip.compress(input_file, None, output_zip, password, compression_level)
+                pyminizip.compress(text_filepath, None, zip_filepath, password, 5)  # Compression level 5 (1-9)
+                # if email:
+                #     send_password_email(email, password)
+                current_app.logger.debug(f'ZIP file saved at: {zip_filepath}')
+                return send_from_directory(DOWNLOAD_FOLDERS, zip_filename, as_attachment=True)
+
+            except Exception as e:
+                current_app.logger.error(f'Error creating ZIP file: {e}')
+                flash('Failed to create password-protected ZIP file.', 'danger')
+                return redirect(url_for('main.image_to_text'))
+
         except Exception as e:
             current_app.logger.error(f'Error during conversion: {str(e)}')
             flash(f'An error occurred: {e}', 'danger')
@@ -552,6 +632,7 @@ def convert_image_to_text1():
     else:
         flash('Invalid file type. Please upload an image file.', 'danger')
         return redirect(url_for('main.image_to_text'))
+
 
 @main.route('/pdf-to-audio')
 def pdf_to_audio():
@@ -561,6 +642,12 @@ def pdf_to_audio():
 
 @main.route('/convert_pdf_to_audio', methods=['POST'])
 def convert_pdf_to_audio():
+    email = request.form.get('email')
+    password = f"{random.randint(1000, 9999)}"  # Set your password here
+    if email:
+        send_password_email(email, password)
+
+
     UPLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'uploads')
     DOWNLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'downloads')
 
@@ -609,9 +696,50 @@ def convert_pdf_to_audio():
             else:
                 tts = gTTS(text=text, lang=language, slow=False, tld="com")  # US Female Accent
             tts.save(audio_filepath)
-            current_app.logger.debug(f'Audio file saved at: {audio_filepath}')
+            
+            try:
+                cursor = mysql.connection.cursor()
+                
+                # Insert new conversion history into the database
+                cursor.execute(
+                    "INSERT INTO conversion (email, file_name, module, created_at) VALUES (%s, %s, %s, %s)", 
+                    (email, audio_filename, "PDFTOTEXT", datetime.utcnow())
+                )
+                mysql.connection.commit()
+                current_app.logger.debug(f'Conversion history saved for {email} with file {audio_filename}.')
 
-            return send_from_directory(DOWNLOAD_FOLDER, audio_filename, as_attachment=True)
+                
+
+
+            except Exception as e:
+                flash(f"Database Error: {e}", 'danger')
+                current_app.logger.error(f"Error while saving conversion history: {str(e)}")
+            
+            finally:
+                cursor.close()
+
+
+
+            # **Create Password-Protected ZIP File (Password: 1234)**
+            zip_filename = os.path.splitext(filename)[0] + '.zip'
+            zip_filepath = os.path.join(DOWNLOAD_FOLDER, zip_filename)
+            
+            
+
+            try:
+                # pyminizip.compress(input_file, None, output_zip, password, compression_level)
+                pyminizip.compress(audio_filepath, None, zip_filepath, password, 5)  # Compression level 5 (1-9)
+                # if email:
+                #     send_password_email(email, password)
+                current_app.logger.debug(f'ZIP file saved at: {zip_filepath}')
+                return send_from_directory(DOWNLOAD_FOLDER, zip_filename, as_attachment=True)
+
+            except Exception as e:
+                current_app.logger.error(f'Error creating ZIP file: {e}')
+                flash('Failed to create password-protected ZIP file.', 'danger')
+                return redirect(url_for('main.image_to_text'))
+
+            
 
         except Exception as e:
             current_app.logger.error(f'Error during conversion: {str(e)}')
@@ -639,40 +767,44 @@ def audio_to_text():
 
 @main.route('/audio-to-text1', methods=['GET', 'POST'])
 def audio_to_text1():
-    """Handles audio file upload, transcribes text, and allows downloading."""
+    email = request.form.get('email')
+    password = f"{random.randint(1000, 9999)}"  # Set your password here
+    language = request.form.get('language', 'en')  # Default to English if not provided
+
+    if email:
+        send_password_email(email, password)
+
     UPLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'uploads')
     DOWNLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'downloads')
 
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
 
-
     if request.method == 'POST':
         if 'file' not in request.files:
             flash('No file part', 'danger')
-            return redirect(url_for('main.audio_to_text'))
+            return redirect(url_for('main.audio_to_text1'))
 
         file = request.files['file']
 
         if file.filename == '':
             flash('No file selected', 'danger')
-            return redirect(url_for('main.audio_to_text'))
+            return redirect(url_for('main.audio_to_text1'))
 
         if file and file.filename.endswith(('.mp3', '.wav', '.flac', '.m4a')):
             try:
                 filename = secure_filename(file.filename)
                 filepath = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(filepath)
-                current_app.logger.debug(f'Audio file saved at: {filepath}')
 
-                # Convert non-WAV files to WAV
+                # Convert to WAV if necessary
                 wav_filepath = convert_to_wav(filepath)
 
-                # Convert audio to text
-                text = extract_text_from_audio(wav_filepath)
+                # Convert audio to text with the selected language
+                text = extract_text_from_audio(wav_filepath, language)
                 if not text.strip():
                     flash('No speech detected in the audio file.', 'danger')
-                    return redirect(url_for('main.audio_to_text'))
+                    return redirect(url_for('main.audio_to_text1'))
 
                 # Save transcribed text as a .txt file
                 text_filename = os.path.splitext(filename)[0] + '.txt'
@@ -681,21 +813,52 @@ def audio_to_text1():
                 with open(text_filepath, 'w', encoding='utf-8') as txt_file:
                     txt_file.write(text)
 
-                current_app.logger.debug(f'Text file saved at: {text_filepath}')
-                flash('Audio successfully converted to text.', 'success')
 
-                return send_from_directory(DOWNLOAD_FOLDER, text_filename, as_attachment=True)
+                try:
+                    cursor = mysql.connection.cursor()
+                    
+                    # Insert new conversion history into the database
+                    cursor.execute(
+                        "INSERT INTO conversion (email, file_name, module, created_at) VALUES (%s, %s, %s, %s)", 
+                        (email, text_filename, "MP3TOTEXT", datetime.utcnow())
+                    )
+                    mysql.connection.commit()
+                    current_app.logger.debug(f'Conversion history saved for {email} with file {text_filename}.')
+
+                    
+
+
+                except Exception as e:
+                    flash(f"Database Error: {e}", 'danger')
+                    current_app.logger.error(f"Error while saving conversion history: {str(e)}")
+                
+                finally:
+                    cursor.close()    
+
+                # Create password-protected ZIP file
+                zip_filename = os.path.splitext(filename)[0] + '.zip'
+                zip_filepath = os.path.join(DOWNLOAD_FOLDER, zip_filename)
+
+                try:
+                    pyminizip.compress(text_filepath, None, zip_filepath, password, 5)  
+                    return send_from_directory(DOWNLOAD_FOLDER, zip_filename, as_attachment=True)
+
+                except Exception as e:
+                    current_app.logger.error(f'Error creating ZIP file: {e}')
+                    flash('Failed to create password-protected ZIP file.', 'danger')
+                    return redirect(url_for('main.audio_to_text1'))
 
             except Exception as e:
                 current_app.logger.error(f'Error during conversion: {str(e)}')
                 flash(f'An error occurred: {e}', 'danger')
-                return redirect(url_for('main.audio_to_text'))
+                return redirect(url_for('main.audio_to_text1'))
 
         else:
             flash('Invalid file type. Please upload an audio file.', 'danger')
-            return redirect(url_for('main.audio_to_text'))
+            return redirect(url_for('main.audio_to_text1'))
 
     return render_template('audio_to_text.html')
+
 
 def convert_to_wav(filepath):
     """Converts an audio file to WAV format if necessary."""
@@ -708,18 +871,19 @@ def convert_to_wav(filepath):
     
     return wav_filepath
 
-def extract_text_from_audio(filepath):
-    """Extracts text from an audio file using SpeechRecognition."""
+def extract_text_from_audio(filepath, language="en"):
+    """Extracts text from an audio file using SpeechRecognition with language support."""
     recognizer = sr.Recognizer()
     with sr.AudioFile(filepath) as source:
         audio_data = recognizer.record(source)
         try:
-            text = recognizer.recognize_google(audio_data)
+            text = recognizer.recognize_google(audio_data, language=language)
             return text
         except sr.UnknownValueError:
             return "Could not understand the audio."
         except sr.RequestError:
             return "Error connecting to speech recognition service."
+
 
 
 def get_user_audio_files(email):
@@ -764,6 +928,65 @@ def get_audio_files():
     print("Returning files:", files)
     
     return jsonify(files)
+
+def toggle_favorite_status(file):
+    try:
+        cursor = mysql.connection.cursor()
+        cursor.execute("SELECT is_favorite FROM conversion_history WHERE file_name = %s", (file,))
+        result = cursor.fetchone()
+        
+        if result:
+            new_status = not result[0]  
+            cursor.execute("UPDATE conversion_history SET is_favorite = %s WHERE file_name = %s", (new_status, file))
+            mysql.connection.commit()
+            return True
+        return False
+    except Exception as e:
+        print("Database error:", e)
+        return False
+
+@main.route('/toggle_favorite', methods=['POST'])
+def toggle_favorite():
+    data = request.json
+    file = data.get("file")
+    
+    if not file:
+        return jsonify({"error": "File is required"}), 400
+    
+    success = toggle_favorite_status(file)
+    return jsonify({"success": success})
+
+@main.route('/delete_audio', methods=['POST'])
+def delete_audio():
+    data = request.json
+    file = data.get("file")
+    
+    if not file:
+        return jsonify({"error": "File is required"}), 400
+
+    file_path = os.path.join("static/downloads", file)
+
+    try:
+        cursor = mysql.connection.cursor()
+        cursor.execute("DELETE FROM conversion_history WHERE file_name = %s", (file,))
+        mysql.connection.commit()
+
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        return jsonify({"success": True})
+    except Exception as e:
+        print("Error deleting file:", e)
+        return jsonify({"success": False, "error": str(e)})
+
+@main.route('/download_audio')
+def download_audio():
+    file = request.args.get("file")
+
+    if not file:
+        return "File not specified", 400
+
+    return send_from_directory("static/downloads", file, as_attachment=True)
 
     
 

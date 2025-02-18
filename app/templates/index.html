@@ -80,6 +80,17 @@
 		<button type="submit">Sign In</button>
 	  </form>
 	</div>
+
+	<!-- otp_verification.html -->
+	<div class="container">
+		<h1>Email Verification</h1>
+		<p>An OTP has been sent to your email: {{ email }}</p>
+		<form method="POST" action="/verify_otp">
+			<input type="text" name="otp" placeholder="Enter OTP" required>
+			<button type="submit">Verify OTP</button>
+		</form>
+	</div>
+
  
 	<div class="overlay-container">
 		<div class="overlay">
