@@ -1,10 +1,13 @@
+import os
 from flask import Flask
 from flask_mysqldb import MySQL
 from flask_mail import Mail
+from dotenv import load_dotenv
 
 mysql = MySQL()
 mail = Mail()  # Declare mail globally
 
+load_dotenv()
 
 def create_app():
     app = Flask(__name__)
@@ -21,13 +24,13 @@ def create_app():
     
 
     # Configure Flask-Mail
-    app.config['MAIL_SERVER'] = 'smtp.gmail.com'  # Use your email provider's SMTP server
-    app.config['MAIL_PORT'] = 587
+    app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')  # Use your email provider's SMTP server
+    app.config['MAIL_PORT'] = os.getenv('MAIL_PORT') 
     app.config['MAIL_USE_TLS'] = True
     app.config['MAIL_USE_SSL'] = False
-    app.config['MAIL_USERNAME'] = 'bu200512@gmail.com'  # Replace with your email
-    app.config['MAIL_PASSWORD'] = 'zliktabovuxbdafy'  # Replace with your email password
-    app.config['MAIL_DEFAULT_SENDER'] = 'bu200512@gmail.com'
+    app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')   # Replace with your email
+    app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')   # Replace with your email password
+    app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER') 
 
     mail.init_app(app)
         

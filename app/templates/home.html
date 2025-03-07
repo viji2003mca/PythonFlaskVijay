@@ -141,17 +141,19 @@
 <body>
 
 
-  <div class="flash-container">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-      
-        {% for category, message in messages %}
-        <div class="alert alert-{{ category }}">{{ message }}</div>
-        {% endfor %}
-      
-      {% endif %}
-    {% endwith %}
-  </div>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+      document.addEventListener("DOMContentLoaded", function () {
+          const flashMessages = JSON.parse('{{ get_flashed_messages(with_categories=True) | tojson | safe }}');
+          flashMessages.forEach(([category, message]) => {
+              Swal.fire({
+                  icon: category === 'success' ? 'success' : 'error',
+                  title: category.charAt(0).toUpperCase() + category.slice(1),
+                  text: message,
+              });
+          });
+      });
+  </script>
   
 
 

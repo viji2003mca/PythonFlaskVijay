@@ -154,6 +154,20 @@
 </head>
 <body>
 
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script>
+      document.addEventListener("DOMContentLoaded", function () {
+          const flashMessages = JSON.parse('{{ get_flashed_messages(with_categories=True) | tojson | safe }}');
+          flashMessages.forEach(([category, message]) => {
+              Swal.fire({
+                  icon: category === 'success' ? 'success' : 'error',
+                  title: category.charAt(0).toUpperCase() + category.slice(1),
+                  text: message,
+              });
+          });
+      });
+  </script>
+
 <header style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; border: 5px solid #FF4B2B; border-radius: 15px;">
   <div style="flex: 0 0 20%; display: flex; justify-content: center;">
     <img src="{{ url_for('static', filename='images/1.jpeg') }}" alt="Logo" style="max-width: 30%; height: 30%; border-radius: 10px;">

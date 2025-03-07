@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from functools import wraps
 import os
@@ -96,7 +95,7 @@ def index():
             # CAPTCHA validation
             user_captcha = request.form.get('captcha')
             if user_captcha != session.get('captcha_code'):
-                flash('Invalid CAPTCHA. Please try again.', 'danger')
+                flash('Invalid CAPTCHA. Please try again.', 'error')
                 return redirect(url_for('main.index'))
 
             # Sign-in logic
@@ -109,13 +108,14 @@ def index():
                 cursor.execute("SELECT id, name, email, password FROM users WHERE email = %s", (email,))
                 user = cursor.fetchone()
             except Exception as e:
-                flash(f"Database Error: {e}", 'danger')
+                flash(f"Database Error: {e}", 'error')
                 return redirect(url_for('main.index'))
             finally:
                 cursor.close()
 
             if user and bcrypt.checkpw(password.encode('utf-8'), user[3].encode('utf-8')):  # Match password
                 session['user_id'] = user[0]  # Store user ID in session
+                session['flash_shown'] = False  # Set flash message flag
                 flash('Login successful!', 'success')
 
                 # Pass user details to index2.html
@@ -305,19 +305,19 @@ def index2():
                 voice_gender = request.form.get('voiceGender', 'female')  # Default to female if not provided
                 
                 language_mapping = {
-                        'eng': 'en',  # English
-                        'spa': 'es',  # Spanish
-                        'fra': 'fr',  # French
-                        'deu': 'de',  # German
-                        'ita': 'it',  # Italian
-                        'jpn': 'ja',  # Japanese
-                        'kor': 'ko',  # Korean
-                        'hin': 'hi',  # Hindi
-                        'tam': 'ta',  # Tamil
-                        'tel': 'te',  # Telugu
-                        'rus': 'ru',  # Russian
-                        'ara': 'ar',  # Arabic
-                    }
+                    'eng': 'en',  # English
+                    'spa': 'es',  # Spanish
+                    'fra': 'fr',  # French
+                    'deu': 'de',  # German
+                    'ita': 'it',  # Italian
+                    'jpn': 'ja',  # Japanese
+                    'kor': 'ko',  # Korean
+                    'hin': 'hi',  # Hindi
+                    'tam': 'ta',  # Tamil
+                    'tel': 'te',  # Telugu
+                    'rus': 'ru',  # Russian
+                    'ara': 'ar',  # Arabic
+                }
 
                     # Get the language from the form (default to 'en' if not provided)
                 form_language = request.form.get('language', 'eng')  # Default to 'eng' if not specified
@@ -363,12 +363,13 @@ def index2():
                             
                             # Insert new conversion history into the database
                             cursor.execute(
-                                "INSERT INTO conversion_history (email, file_name, is_favorite, created_at) VALUES (%s, %s, %s, %s)", 
+                                "INSERT INTO conversion_history1 (email, audio_filename, is_favorite, created_at) VALUES (%s, %s, %s, %s)", 
                                 (email, audio_filename, False, datetime.utcnow())
                             )
                             mysql.connection.commit()
+                            current_app.logger.debug("Database commit successful.")
                             current_app.logger.debug(f'Conversion history saved for {email} with file {audio_filename}.')
-
+                            
                             
 
 
@@ -424,14 +425,12 @@ def index2():
                                         
                                         # Insert new conversion history into the database
                                         cursor.execute(
-                                            "INSERT INTO conversion_history (email, file_name, is_favorite, created_at) VALUES (%s, %s, %s, %s)", 
+                                            "INSERT INTO conversion_history1 (email, audio_filename, is_favorite, created_at) VALUES (%s, %s, %s, %s)", 
                                             (email, final_audio_filename, False, datetime.utcnow())
                                         )
                                         mysql.connection.commit()
                                         current_app.logger.debug(f'Conversion history saved for {email} with file {final_audio_filename}.')
-
-                                        
-
+                                       
 
                                     except Exception as e:
                                         flash(f"Database Error: {e}", 'danger')
@@ -452,6 +451,7 @@ def index2():
                                         # if email:
                                         #     send_password_email(email, password)
                                         current_app.logger.debug(f'ZIP file saved at: {zip_filepath}')
+                                        flash('Smart File Converter can be Converted Your Audio Successfully Saved in Downloads!', 'success')
                                         return send_from_directory(DOWNLOAD_FOLDER, zip_filename, as_attachment=True)
 
                                     except Exception as e:
@@ -476,6 +476,7 @@ def index2():
                                 # if email:
                                 #     send_password_email(email, password)
                                 current_app.logger.debug(f'ZIP file saved at: {zip_filepath}')
+                                flash('Smart File Converter can be Converted Your Audio Successfully Saved in Downloads!', 'success')
                                 return send_from_directory(DOWNLOAD_FOLDER, zip_filename, as_attachment=True)
 
                             except Exception as e:
@@ -618,6 +619,7 @@ def convert_image_to_text1():
                 # if email:
                 #     send_password_email(email, password)
                 current_app.logger.debug(f'ZIP file saved at: {zip_filepath}')
+                flash('Smart File Converter can be Converted Your Audio Successfully Saved in Downloads!', 'success')
                 return send_from_directory(DOWNLOAD_FOLDERS, zip_filename, as_attachment=True)
 
             except Exception as e:
@@ -732,6 +734,7 @@ def convert_pdf_to_audio():
                 # if email:
                 #     send_password_email(email, password)
                 current_app.logger.debug(f'ZIP file saved at: {zip_filepath}')
+                flash('Smart File Converter can be Converted Your Audio Successfully Saved in Downloads!', 'success')
                 return send_from_directory(DOWNLOAD_FOLDER, zip_filename, as_attachment=True)
 
             except Exception as e:
@@ -841,6 +844,7 @@ def audio_to_text1():
 
                 try:
                     pyminizip.compress(text_filepath, None, zip_filepath, password, 5)  
+                    flash('Smart File Converter can be Converted Your Audio Successfully Saved in Downloads!', 'success')
                     return send_from_directory(DOWNLOAD_FOLDER, zip_filename, as_attachment=True)
 
                 except Exception as e:
@@ -891,7 +895,7 @@ def get_user_audio_files(email):
         cursor = mysql.connection.cursor()
 
         # Query the database for filenames where the email matches
-        query = "SELECT file_name FROM conversion_history WHERE email = %s"
+        query = "SELECT audio_filename FROM conversion_history1 WHERE email = %s"
         cursor.execute(query, (email,))
         files = cursor.fetchall()  # Returns a list of tuples
         
@@ -932,12 +936,12 @@ def get_audio_files():
 def toggle_favorite_status(file):
     try:
         cursor = mysql.connection.cursor()
-        cursor.execute("SELECT is_favorite FROM conversion_history WHERE file_name = %s", (file,))
+        cursor.execute("SELECT is_favorite FROM conversion_history1 WHERE audio_filename = %s", (file,))
         result = cursor.fetchone()
         
         if result:
             new_status = not result[0]  
-            cursor.execute("UPDATE conversion_history SET is_favorite = %s WHERE file_name = %s", (new_status, file))
+            cursor.execute("UPDATE conversion_history1 SET is_favorite = %s WHERE audio_file_name = %s", (new_status, file))
             mysql.connection.commit()
             return True
         return False
@@ -968,7 +972,7 @@ def delete_audio():
 
     try:
         cursor = mysql.connection.cursor()
-        cursor.execute("DELETE FROM conversion_history WHERE file_name = %s", (file,))
+        cursor.execute("DELETE FROM conversion_history1 WHERE audio_filename = %s", (file,))
         mysql.connection.commit()
 
         if os.path.exists(file_path):
